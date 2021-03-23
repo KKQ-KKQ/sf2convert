@@ -1,1 +1,0 @@
-Open sf2convert.jucer with Projucer and create exporters for your operating system.

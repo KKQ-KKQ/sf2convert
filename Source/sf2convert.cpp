@@ -35,14 +35,21 @@ static void usage(const char* pname)
     fprintf(stderr, "usage: %s [-flags] infile outfile\n", pname);
     fprintf(stderr, "flags:\n");
     fprintf(stderr, "   -zf    compress source file using FLAC (SF4 format)\n");
-    fprintf(stderr, "   -zf0   ditto w/quality=low\n");
-    fprintf(stderr, "   -zf1   ditto w/quality=medium\n");
-    fprintf(stderr, "   -zf2   ditto w/quality=high (default)\n");
+    fprintf(stderr, "   -zf0   ditto w/level=low\n");
+    fprintf(stderr, "   -zf1   ditto w/level=medium\n");
+    fprintf(stderr, "   -zf2   ditto w/level=high (default)\n");
     
+    fprintf(stderr, "   -zl    compress source file using FLAC (SF3 format)\n");
+    fprintf(stderr, "   -zl0   ditto w/level=low\n");
+    fprintf(stderr, "   -zl1   ditto w/level=medium\n");
+    fprintf(stderr, "   -zl2   ditto w/level=high (default)\n");
+
     fprintf(stderr, "   -zo    compress source file using Ogg Vorbis (SF3 format)\n");
     fprintf(stderr, "   -zo0   ditto w/quality=low\n");
     fprintf(stderr, "   -zo1   ditto w/quality=medium\n");
     fprintf(stderr, "   -zo2   ditto w/quality=high (default)\n");
+
+    fprintf(stderr, "   -r     store raw data when compressed size is enlarged\n");
     
     fprintf(stderr, "   -x     expand source file to SF2 format\n");
     fprintf(stderr, "   -d     dump presets\n");
@@ -59,6 +66,7 @@ int main(int argc, char* argv[])
     SF2::FileType format = SF2::SF2Format;
     int  quality = 2;
     bool any = false;
+    bool raw = false;
     
     StringArray commandLine (argv + 1, argc - 1);
     /** Lacking getopt() on Windows, this is a quick & simple hack to pasre command line options */
@@ -91,6 +99,11 @@ int main(int argc, char* argv[])
                 format = SF2::SF4Format;
                 any = true;
             }
+            if (token.indexOfChar('l') > 0) {
+                convert = true;
+                format = SF2::SF3FormatFlac;
+                any = true;
+            }
             if (token.indexOfChar('d') > 0)
             {
                 dump = true;
@@ -107,6 +120,10 @@ int main(int argc, char* argv[])
             if (token.indexOfChar('2') > 0)
             {
                 quality = 2;
+            }
+            if (token.indexOfChar('r') > 0)
+            {
+                raw = true;
             }
             //DBG(token);
             commandLine.remove(0);
@@ -126,6 +143,7 @@ int main(int argc, char* argv[])
 
     {
         SF2::SoundFont sf(inFilename);
+        sf._rawWhenEnlarged = raw;
         sf.log("Reading " + inFilename.getFullPathName());
         
         if (!sf.read()) {

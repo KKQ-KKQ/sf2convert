@@ -126,12 +126,12 @@ int Sample::numSamples() const
  */
 SampleMeta* Sample::createMeta()
 {
-    meta = new SampleMeta();
+    meta = std::unique_ptr<SampleMeta>(new SampleMeta());
     meta->name = name;
     meta->samples = numSamples();
     meta->loopstart = loopstart;
     meta->loopend = loopend;
-    return meta;
+    return meta.get();
 }
 
 /** 
@@ -217,8 +217,8 @@ SoundFont::~SoundFont()
 bool SoundFont::read()
 {
     _fileSizeIn = _path.getSize();
-    ScopedPointer<FileInputStream> in = new FileInputStream(_path);
-    _infile = in;
+    std::unique_ptr<FileInputStream> in = std::unique_ptr<FileInputStream>(new FileInputStream(_path));
+    _infile = in.get();
     
     if (!_infile->openedOk()) {
         log(String("cannot open " + _path.getFullPathName()));
@@ -482,7 +482,7 @@ void SoundFont::readSection (const char* fourcc, int len)
     case FOURCC('i', 'v', 'e', 'r'):    // sample rom version
     default:
         skip(len);
-        throw(String("unknown fourcc " + String(fourcc)));
+        log(String("unknown fourcc " + String(fourcc)));
         break;
     }
 }
@@ -717,9 +717,9 @@ void SoundFont::readShdX (int size)
 
 bool SoundFont::write (const File filename, FileType format, int quality)
 {
-    ScopedPointer<FileOutputStream> out = new FileOutputStream(filename);
+    std::unique_ptr<FileOutputStream> out = std::unique_ptr<FileOutputStream>(new FileOutputStream(filename));
     
-    _outfile = out;
+    _outfile = out.get();
     _outfile->setPosition(0);
     _outfile->truncate();
     _fileFormatOut = format;
@@ -783,9 +783,11 @@ bool SoundFont::write (const File filename, FileType format, int quality)
         writeMod("imod", &_iZones);
         writeGen("igen", &_iZones);
         writeShdr();
-        
+
+#if USE_SHDX_CHUNK
         if (_fileFormatOut != SF2Format)
             writeShdX();
+#endif
 
         pos = _outfile->getPosition();
         _outfile->setPosition(listLenPos);
@@ -805,7 +807,7 @@ bool SoundFont::write (const File filename, FileType format, int quality)
     
     String msg;
     int percent = round(100 * (double)_fileSizeOut/(double)_fileSizeIn);
-    msg << "File size change: "  << percent << "%";
+    msg << "File size change: " << _fileSizeIn << "=>" << _fileSizeOut << " " << percent << "%";
     log(msg);
     
     return true;
@@ -863,7 +865,7 @@ void SoundFont::writeShort (short val)
 //   write
 //---------------------------------------------------------
 
-void SoundFont::write (const char* p, int n)
+void SoundFont::write (const char* p, size_t n)
 {
     if (!_outfile->write(p, n))
         throw("write error");
@@ -913,7 +915,8 @@ void SoundFont::writeIfil()
     write("ifil", 4);
     writeDword(4);
     unsigned char data[4];
-    if (_fileFormatOut == SF3Format) _version.major = 3;
+    if (_fileFormatOut == SF3Format || _fileFormatOut == SF3FormatFlac)
+        _version.major = 3;
     if (_fileFormatOut == SF4Format) _version.major = 4;
     data[0] = _version.major;
     data[1] = _version.major >> 8;
@@ -1161,7 +1164,7 @@ void SoundFont::writeShdX()
     writeDword(SampleMetaSize * (_samples.size() + 1));
 
     for (int i = 0; i < _samples.size(); i++)
-        writeShdXEach(_samples[i]->meta);
+        writeShdXEach(_samples[i]->meta.get());
 
     // Empty terminator
     SampleMeta m;
@@ -1174,16 +1177,10 @@ void SoundFont::writeShdX()
 
 void SoundFont::writeShdXEach (const SampleMeta* m)
 {
-    jassert (m != nullptr);
-    
-    int64 start = _outfile->getPosition();
-    
     writeString(m->name, 20);
     writeDword(m->samples);
     writeDword(m->loopstart);
     writeDword(m->loopend);
-    // Check SampleMetaSize is correct
-    jassert (_outfile->getPosition() - start == SampleMetaSize);
 }
 
 //---------------------------------------------------------
@@ -1220,42 +1217,119 @@ void SoundFont::writeSmpl (int quality)
             }
             break;
         }
-        case SF3Format: // SF3
+        case SF3Format: // SF3 Vorbis
         {
             for (int i = 0; i < _samples.size(); i++)
             {
                 Sample* s = _samples.getUnchecked(i);
                 int written = writeSampleDataVorbis(s, quality);
-                
-                s->setCompressionType(Vorbis);
-                // Offsets in SF3 based on byte offset in file.
-                // Hack start/end of sample metadata to accommodate this:
-                s->start = offsetFromChunk;
-                offsetFromChunk += written;
-                s->end = offsetFromChunk;
-                // Important: keep relative loop offsets in file, so it can be restored after loading.
-                // Loop is already relative ...
+
+                if (written) {
+                    s->setCompressionType(Vorbis);
+                    // Offsets in SF3 based on byte offset in file.
+                    // Hack start/end of sample metadata to accommodate this:
+                    s->start = offsetFromChunk;
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk;
+                    // Important: keep relative loop offsets in file, so it can be restored after loading.
+                    // Loop is already relative ...
+                }
+                else { // Plain
+                    if (offsetFromChunk & 1) {
+                        const char padding = 0;
+                        write(&padding, 1);
+                        ++offsetFromChunk;
+                    }
+                    written = writeSampleDataPlain(s);
+                    s->setCompressionType(Raw);
+                    // Offsets in SF2 format based on 'sample count'
+                    s->start = offsetFromChunk / sizeof(short);
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk / sizeof(short);
+                    // turn relative loop points to absolute, as SF2 format requires
+                    s->loopstart += s->start;
+                    s->loopend   += s->start;
+                }
             }
             break;
         }
-        case SF4Format: // SF4
+        case SF4Format: // SF4 FLAC
         {
             for (int i = 0; i < _samples.size(); i++)
             {
                 Sample* s = _samples.getUnchecked(i);
                 int written = writeSampleDataFlac(s, quality);
-                
-                s->setCompressionType(Flac);
-                // Offsets in SF4 based on byte offset in file.
-                // Hack start/end of sample metadata to accommodate this:
-                s->start = offsetFromChunk;
-                offsetFromChunk += written;
-                s->end = offsetFromChunk;
-                // Important: keep relative loop offsets in file, so it can be restored after loading.
-                // Loop is already relative ...
+
+                if (written) {
+                    s->setCompressionType(Flac);
+                    // Offsets in SF4 based on byte offset in file.
+                    // Hack start/end of sample metadata to accommodate this:
+                    s->start = offsetFromChunk;
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk;
+                    // Important: keep relative loop offsets in file, so it can be restored after loading.
+                    // Loop is already relative ...
+                }
+                else { // Plain
+                    if (offsetFromChunk & 1) {
+                        const char padding = 0;
+                        write(&padding, 1);
+                        ++offsetFromChunk;
+                    }
+                    written = writeSampleDataPlain(s);
+                    s->setCompressionType(Raw);
+                    // Offsets in SF2 format based on 'sample count'
+                    s->start = offsetFromChunk / sizeof(short);
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk / sizeof(short);
+                    // turn relative loop points to absolute, as SF2 format requires
+                    s->loopstart += s->start;
+                    s->loopend   += s->start;
+                }
             }
             break;
         }
+        case SF3FormatFlac: // SF3 Flac
+        {
+            for (int i = 0; i < _samples.size(); i++)
+            {
+                Sample* s = _samples.getUnchecked(i);
+                int written = writeSampleDataFlac(s, quality);
+
+                if (written) {
+                    s->setCompressionType(Vorbis);
+                    // Offsets in SF3 based on byte offset in file.
+                    // Hack start/end of sample metadata to accommodate this:
+                    s->start = offsetFromChunk;
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk;
+                    // Important: keep relative loop offsets in file, so it can be restored after loading.
+                    // Loop is already relative ...
+                }
+                else { // Plain
+                    if (offsetFromChunk & 1) {
+                        const char padding = 0;
+                        write(&padding, 1);
+                        ++offsetFromChunk;
+                    }
+                    written = writeSampleDataPlain(s);
+                    s->setCompressionType(Raw);
+                    // Offsets in SF2 format based on 'sample count'
+                    s->start = offsetFromChunk / sizeof(short);
+                    offsetFromChunk += written;
+                    s->end = offsetFromChunk / sizeof(short);
+                    // turn relative loop points to absolute, as SF2 format requires
+                    s->loopstart += s->start;
+                    s->loopend   += s->start;
+                }
+            }
+            break;
+        }
+    }
+    if (offsetFromChunk & 1) {
+        const char pad = 0;
+        write(&pad, 1);
+        ++offsetFromChunk;
     }
     int64 npos = _outfile->getPosition();
     _outfile->setPosition(pos);
@@ -1335,11 +1409,22 @@ int SoundFont::readSampleDataVorbis (Sample* s)
     s->byteData = new byte[numBytes];
     _infile->setPosition(_samplePos + s->start);
     _infile->read(s->byteData, numBytes);
-    
+
+
 #if USE_JUCE_VORBIS
     
     MemoryInputStream* input = new MemoryInputStream(s->byteData, s->byteDataSize, false);
-    ScopedPointer<AudioFormatReader> reader = _audioFormatVorbis->createReaderFor(input, true);
+    std::unique_ptr<AudioFormatReader> reader;
+    if (memcmp(s->byteData, "fLaC", 4) == 0)
+    {
+        _fileFormatIn = SF3FormatFlac;
+        reader = std::unique_ptr<AudioFormatReader>(_audioFormatFlac->createReaderFor(input, true));
+    }
+    else if (memcmp(s->byteData, "OggS", 4) == 0)
+        reader = std::unique_ptr<AudioFormatReader>(_audioFormatVorbis->createReaderFor(input, true));
+    else
+        throw("Invalid Header!");
+
     if (reader == nullptr)
         throw("Failed decoding Vorbis data!");
     int numSamples = reader->lengthInSamples;
@@ -1386,7 +1471,7 @@ int SoundFont::readSampleDataFlac (Sample* s)
     _infile->read(s->byteData, numBytes);
     
     MemoryInputStream* input = new MemoryInputStream(s->byteData, s->byteDataSize, false);
-    ScopedPointer<AudioFormatReader> reader = _audioFormatFlac->createReaderFor(input, true);
+    std::unique_ptr<AudioFormatReader> reader = std::unique_ptr<AudioFormatReader>(_audioFormatFlac->createReaderFor(input, true));
     if (reader == nullptr)
         throw("Failed decoding FLAC data!");
     
@@ -1446,7 +1531,11 @@ int SoundFont::writeSampleDataVorbis (Sample* s, int quality)
     const int numSamples = s->numSamples();
     int rawBytes = numSamples * sizeof(short);
     int option = 4;
-    
+
+    auto samplerate = s->samplerate;
+    if (samplerate < 8000)
+        samplerate = 8000;
+
 #if USE_JUCE_VORBIS
     
     AudioSampleBuffer buffer (1, numSamples);
@@ -1476,15 +1565,21 @@ int SoundFont::writeSampleDataVorbis (Sample* s, int quality)
     MemoryBlock output;
     {
         MemoryOutputStream* temp = new MemoryOutputStream(output, false);
-        ScopedPointer<AudioFormatWriter> writer = _audioFormatVorbis->
-            createWriterFor(temp, s->samplerate, 1, 16, nullptr, option);
+        std::unique_ptr<AudioFormatWriter> writer = std::unique_ptr<AudioFormatWriter>(_audioFormatVorbis->
+            createWriterFor(temp, samplerate, 1, 16, nullptr, option));
         writer->writeFromAudioSampleBuffer(buffer,0,numSamples);
         // writer MUST be deleted to properly flush & close ...
     }
     
     int numBytes = output.getSize();
-    write((char*)output.getData(), numBytes);
-    
+    bool compressed;
+    if (!_rawWhenEnlarged || numBytes < rawBytes) {
+        write((char*)output.getData(), numBytes);
+        compressed = true;
+    }
+    else
+        compressed = false;
+
 #else  // USE_JUCE_VORBIS
 
     ogg_stream_state os;
@@ -1504,7 +1599,7 @@ int SoundFont::writeSampleDataVorbis (Sample* s, int quality)
         case 2: option = 10; qualityF = 1.0f; break; // High quality
     }
     
-    int ret = vorbis_encode_init_vbr(&vi, 1, s->samplerate, qualityF);
+    int ret = vorbis_encode_init_vbr(&vi, 1, samplerate, qualityF);
     if (ret) {
         fprintf(stderr, "vorbis init failed\n");
         return false;
@@ -1605,17 +1700,28 @@ int SoundFont::writeSampleDataVorbis (Sample* s, int quality)
     vorbis_info_clear(&vi);
     
     int numBytes = p - obuf;
-    write(obuf, numBytes);
+    bool compressed;
+    if (!_rawWhenEnlarged || numBytes < rawBytes) {
+        write(obuf, numBytes);
+        compressed = true;
+    }
+    else {
+        writeSampleDataPlain(s);
+        compressed = false;
+    }
     delete [] obuf;
     
 #endif // USE_JUCE_VORBIS
     
     String msg;
     int percent = roundf(100.f * (float)numBytes/(float)rawBytes);
-    msg << "Compressed " << _qualityOptionsVorbis[option] << ": " << s->name << " (" << percent << "%)";
+    msg << (compressed ? "Compressed Vorbis " : "Not Compressed Vorbis ") << _qualityOptionsVorbis[option] << ": " << s->name << " (" << percent << "%)";
     log(msg);
-    
-    return numBytes;
+
+    if (compressed)
+        return numBytes;
+    else
+        return 0;
 }
 
 
@@ -1630,6 +1736,10 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
     jassert (s->numSamples() > 0);
     const int numSamples = s->numSamples();
     int rawBytes = numSamples * sizeof(short);
+
+    auto samplerate = s->samplerate;
+    if (samplerate < 8000)
+        samplerate = 8000;
 
     AudioSampleBuffer buffer (1, numSamples);
     float* b = buffer.getWritePointer(0);
@@ -1657,20 +1767,29 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
     MemoryBlock output;
     {
         MemoryOutputStream* temp = new MemoryOutputStream(output, false);
-        ScopedPointer<AudioFormatWriter>  writer = _audioFormatFlac->
-                createWriterFor(temp, s->samplerate, 1, 16, nullptr, option);
+        std::unique_ptr<AudioFormatWriter> writer = std::unique_ptr<AudioFormatWriter>(_audioFormatFlac->
+                createWriterFor(temp, samplerate, 1, 16, nullptr, option));
         writer->writeFromAudioSampleBuffer(buffer,0,numSamples);
         // writer MUST be deleted to properly flush & close ...
     }
     int numBytes = output.getSize();
-    write((char*)output.getData(), numBytes);
-    
+    bool compressed;
+    if (!_rawWhenEnlarged || numBytes < rawBytes) {
+        write((char*)output.getData(), numBytes);
+        compressed = true;
+    }
+    else
+        compressed = false;
+
     String msg;
     int percent = roundf(100.f * (float)numBytes/(float)rawBytes);
-    msg << "Compressed FLAC " << _qualityOptionsFlac[option] << ": " << s->name << " (" << percent << "%)";
+    msg << (compressed? "Compressed FLAC " : "Not Compressed FLAC ") << _qualityOptionsFlac[option] << ": " << s->name << " (" << percent << "%)";
     log(msg);
 
-    return numBytes;
+    if (compressed)
+        return numBytes;
+    else
+        return 0;
 }
 
 
@@ -1703,14 +1822,12 @@ void SoundFont::fixSampleType()
 
             case 5:
             case 6:
-            case 7:
                 s->sampletype &= ~15;
                 s->sampletype |= 4;
                 break;
 
             case 9:
             case 10:
-            case 11:
                 s->sampletype &= ~15;
                 s->sampletype |= 8;
                 break;

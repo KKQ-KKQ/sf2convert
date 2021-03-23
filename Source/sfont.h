@@ -31,7 +31,10 @@
 #define USE_JUCE_VORBIS 1
 
 // Enable this, if compression format is set individually per sample (not yet possible)
-#define USE_MULTIPLE_COMPRESSION_FORMATS 0
+#define USE_MULTIPLE_COMPRESSION_FORMATS 1
+
+// Enable this, if you want to write 'shdX' chunk
+#define USE_SHDX_CHUNK 0
 
 // Disable this, if you don't want to fix invalid sampletype.
 #define FIX_INVALID_SAMPLETYPE 1
@@ -63,7 +66,8 @@ enum FileType
 {
     SF2Format,
     SF3Format,
-    SF4Format
+    SF4Format,
+    SF3FormatFlac,
 };
     
 struct sfVersionTag
@@ -285,7 +289,7 @@ public:
     int sampleDataSize;
     short * sampleData;
     
-    ScopedPointer<SampleMeta> meta;
+    std::unique_ptr<SampleMeta> meta;
     
     JUCE_LEAK_DETECTOR (Sample);
 };
@@ -357,7 +361,7 @@ private:
     void writeByte (unsigned char val);
     void writeChar (char val);
     void writeShort (short val);
-    void write (const char* p, int n);
+    void write (const char* p, size_t n);
     void writeString (const String& string, size_t size);
     void writeStringSection (const char* fourcc, const String& string);
     void writePreset (int zoneIdx, const Preset* preset);
@@ -383,11 +387,11 @@ private:
     int writeSampleDataFlac (Sample* s, int quality);
     
     bool writeCSample (Sample*, int idx);
-    
+
 #if FIX_INVALID_SAMPLETYPE
     void fixSampleType();
 #endif
-
+    
 #if ! USE_JUCE_VORBIS
     bool decodeOggVorbis (Sample* s);
 #endif
@@ -429,7 +433,11 @@ private:
     
     Array<Zone*> _pZones; // owned by _presets after loading
     Array<Zone*> _iZones; // owned by _instruments after loading
-    
+
+public:
+    bool _rawWhenEnlarged = false;
+
+private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundFont);
 };
     

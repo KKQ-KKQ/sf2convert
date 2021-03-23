@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="1.0.0"
               bundleIdentifier="com.cognitone.sf2convert" includeBinaryInAppConfig="0"
-              displaySplashScreen="1" jucerFormatVersion="1">
+              displaySplashScreen="1" jucerFormatVersion="1" cppLanguageStandard="11">
   <MAINGROUP id="MVXugt" name="sf2convert">
     <GROUP id="{47A31A0C-1126-DD40-5DA0-4438F81DF118}" name="Source">
       <FILE id="oYyReq" name="sf2convert.cpp" compile="1" resource="0" file="Source/sf2convert.cpp"/>

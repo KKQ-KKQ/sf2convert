@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="1.0.0"
               bundleIdentifier="com.cognitone.sf2convert" includeBinaryInAppConfig="0"
-              jucerVersion="4.3.0">
+              displaySplashScreen="1" jucerFormatVersion="1">
   <MAINGROUP id="MVXugt" name="sf2convert">
     <GROUP id="{47A31A0C-1126-DD40-5DA0-4438F81DF118}" name="Source">
       <FILE id="oYyReq" name="sf2convert.cpp" compile="1" resource="0" file="Source/sf2convert.cpp"/>
@@ -30,40 +30,42 @@
         <MODULEPATH id="juce_audio_processors" path="../../audio/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <VS2010 targetFolder="Builds/VisualStudio2010">
+    <VS2019 targetFolder="Builds/VisualStudio2019">
       <CONFIGURATIONS>
-        <CONFIGURATION name="Debug" winWarningLevel="4" generateManifest="1" winArchitecture="32-bit"
-                       isDebug="1" optimisation="1" targetName="sf2convert"/>
-        <CONFIGURATION name="Release" winWarningLevel="4" generateManifest="1" winArchitecture="32-bit"
-                       isDebug="0" optimisation="3" targetName="sf2convert"/>
+        <CONFIGURATION isDebug="1" name="Debug" winArchitecture="Win32"/>
+        <CONFIGURATION isDebug="0" name="Release" winArchitecture="Win32"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
-        <MODULEPATH id="juce_core" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_events" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_graphics" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_data_structures" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_gui_basics" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_gui_extra" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_cryptography" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_audio_basics" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_audio_devices" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_audio_formats" path="../../audio/juce/modules"/>
-        <MODULEPATH id="juce_audio_processors" path="../../audio/juce/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../juce"/>
+        <MODULEPATH id="juce_gui_basics" path="../../juce"/>
+        <MODULEPATH id="juce_graphics" path="../../juce"/>
+        <MODULEPATH id="juce_events" path="../../juce"/>
+        <MODULEPATH id="juce_data_structures" path="../../juce"/>
+        <MODULEPATH id="juce_cryptography" path="../../juce"/>
+        <MODULEPATH id="juce_core" path="../../juce"/>
+        <MODULEPATH id="juce_audio_processors" path="../../juce"/>
+        <MODULEPATH id="juce_audio_formats" path="../../juce"/>
+        <MODULEPATH id="juce_audio_devices" path="../../juce"/>
+        <MODULEPATH id="juce_audio_basics" path="../../juce"/>
       </MODULEPATHS>
-    </VS2010>
+    </VS2019>
   </EXPORTFORMATS>
   <MODULES>
-    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
-  <JUCEOPTIONS JUCE_USE_FLAC="enabled" JUCE_USE_OGGVORBIS="enabled"/>
+  <JUCEOPTIONS JUCE_USE_FLAC="1" JUCE_USE_OGGVORBIS="1"/>
+  <LIVE_SETTINGS>
+    <OSX/>
+    <WINDOWS/>
+  </LIVE_SETTINGS>
 </JUCERPROJECT>

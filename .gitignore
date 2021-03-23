@@ -30,3 +30,7 @@
 
 # Folders
 Builds/
+JuceLibraryCode/
+
+#Others
+.DS_Store

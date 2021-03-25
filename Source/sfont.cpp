@@ -1808,10 +1808,15 @@ void SoundFont::fixSampleType()
             if (_fileFormatIn != SF2Format)
             {
                 for (int i = 0; i < _samples.size(); i++) {
-                    if (_samples[i]->sampletype != 1) {
-                        _samples[i]->sampletype &= ~1;
+                    _infile->setPosition(_samplePos + _samples[i]->start);
+                    char header[4];
+                    readSignature(header);
+                    if (memcmp(header, "OggS", 4) == 0) {
+                        if (_samples[i]->sampletype != 1) {
+                            _samples[i]->sampletype &= ~1;
+                        }
+                        _samples[i]->sampletype |= SampleType::TypeVorbis;
                     }
-                    _samples[i]->sampletype |= SampleType::TypeVorbis;
                 }
             }
             break;

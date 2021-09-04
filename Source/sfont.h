@@ -25,6 +25,7 @@
 #ifndef __SOUNDFONT_H__
 #define __SOUNDFONT_H__
 
+#include <string>
 #include "../JuceLibraryCode/JuceHeader.h"
 
 // Disable this, if you don't want to use the Juce Vorbis code
@@ -194,10 +195,10 @@ public:
 class Preset
 {
 public:
-    Preset() : name(0), preset(0), bank(0), presetBagNdx(0), library(0), genre(0), morphology(0) {};
+    Preset() : name(), preset(0), bank(0), presetBagNdx(0), library(0), genre(0), morphology(0) {};
    ~Preset() {};
     
-    String name;
+    std::string name;
     int preset;
     int bank;
     int presetBagNdx; // used only for read
@@ -221,7 +222,7 @@ public:
    ~Instrument() {};
     
     int index;        // used only for reading
-    String name;
+    std::string name;
     OwnedArray<Zone> zones;
     
     JUCE_LEAK_DETECTOR (Instrument);
@@ -240,7 +241,7 @@ public:
     SampleMeta() : name (), samples(0), loopstart(0), loopend(0) {};
    ~SampleMeta() {};
     
-    String name;
+    std::string name;
     uint samples;   // original number of samples
     uint loopstart; // Relative
     uint loopend;
@@ -272,7 +273,7 @@ public:
     SampleMeta* createMeta();
     bool checkMeta();
     
-    String name;
+    std::string name;
     uint start;
     uint end;
     uint loopstart;
@@ -328,15 +329,15 @@ private:
     int readShort();
     int readByte();
     int readChar();
-    int readFourcc (const char* signature);
-    int readFourcc (char* signature);
+    unsigned readFourcc (const char* signature);
+    unsigned readFourcc (char* signature);
     void readSignature (const char* signature);
     void readSignature (char* signature);
-    void skip (int n);
-    void readSection (const char* fourcc, int len);
+    void skip (int64 n);
+    void readSection (const char* fourcc, unsigned len);
     void readVersion();
     
-    String readString (int n);
+    std::string readString (int n);
     
     void readPhdr (int len);
     void readBag (int, Array<Zone*>* zones);
@@ -362,7 +363,7 @@ private:
     void writeChar (char val);
     void writeShort (short val);
     void write (const char* p, size_t n);
-    void writeString (const String& string, size_t size);
+    void writeString (const std::string& string, size_t size);
     void writeStringSection (const char* fourcc, const String& string);
     void writePreset (int zoneIdx, const Preset* preset);
     void writeModulator (const ModulatorList* m);
@@ -407,14 +408,14 @@ private:
     File _path;
     sfVersionTag _version;
     
-    String _engine;
-    String _name;
-    String _date;
-    String _comment;
-    String _tools;
-    String _creator;
-    String _product;
-    String _copyright;
+    std::string _engine;
+    std::string _name;
+    std::string _date;
+    std::string _comment;
+    std::string _tools;
+    std::string _creator;
+    std::string _product;
+    std::string _copyright;
     
     int64 _samplePos;
     int64 _sampleLen;

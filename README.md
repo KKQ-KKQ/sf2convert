@@ -32,10 +32,11 @@ For additional options, run the utility with an empty option.
 
 
 ## Notes
+1. This application uses a lot of memory.
 
-Try the following command if you cannot run the utility on MacOS.
+2. Try the following command if you cannot run the utility on MacOS.
 
-`xattr -c sf2convert`
+    `xattr -c sf2convert`
 
 
 ## How To Compile

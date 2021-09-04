@@ -225,11 +225,15 @@ bool SoundFont::read()
         return false;
     }
     try {
-        int len = readFourcc("RIFF");
+        unsigned len = readFourcc("RIFF");
         readSignature("sfbk");
         len -= 4;
         while (len) {
-            int len2 = readFourcc("LIST");
+            if (len & 1) {
+                skip(1);
+                len -= 1;
+            }
+            unsigned len2 = readFourcc("LIST");
             len -= (len2 + 8);
             char fourcc[5];
             fourcc[0] = 0;
@@ -237,8 +241,12 @@ bool SoundFont::read()
             fourcc[4] = 0;
             len2 -= 4;
             while (len2) {
+                if (len2 & 1) {
+                    skip(1);
+                    len2 -= 1;
+                }
                 fourcc[0] = 0;
-                int len3 = readFourcc(fourcc);
+                unsigned len3 = readFourcc(fourcc);
                 fourcc[4] = 0;
                 len2 -= (len3 + 8);
                 readSection(fourcc, len3);
@@ -248,7 +256,7 @@ bool SoundFont::read()
         fixSampleType();
 #endif
         // load sample data
-        for (int i = 0; i < _samples.size(); i++)
+        for (uint i = 0; i < _samples.size(); i++)
             readSampleData(_samples[i]);
     }
     catch (juce::String s) {
@@ -266,7 +274,7 @@ bool SoundFont::read()
 //   skip
 //---------------------------------------------------------
 
-void SoundFont::skip (int n)
+void SoundFont::skip (int64 n)
 {
     int64 pos = _infile->getPosition();
     if (!_infile->setPosition(pos + n))
@@ -277,13 +285,13 @@ void SoundFont::skip (int n)
 //   readFourcc
 //---------------------------------------------------------
 
-int SoundFont::readFourcc (char* signature)
+uint SoundFont::readFourcc (char* signature)
 {
     readSignature(signature);
     return readDword();
 }
 
-int SoundFont::readFourcc (const char* signature)
+uint SoundFont::readFourcc (const char* signature)
 {
     readSignature(signature);
     return readDword();
@@ -388,19 +396,17 @@ void SoundFont::readVersion()
 //   readString
 //---------------------------------------------------------
 
-String SoundFont::readString (int n)
+std::string SoundFont::readString (int n)
 {
     if (n == 0)
         return "";
     
-    char *data = new char[n];
+    char *data = new char[n+1]();
 
     if (_infile->read((char*)data, n) != n)
         throw("unexpected end of file");
-    if (data[n-1] != 0)
-        data[n] = 0;
 
-    auto ret = String::fromUTF8(data);
+    auto ret = std::string(data);
     delete [] data;
     return ret;
 }
@@ -409,7 +415,7 @@ String SoundFont::readString (int n)
 //   readSection
 //---------------------------------------------------------
 
-void SoundFont::readSection (const char* fourcc, int len)
+void SoundFont::readSection (const char* fourcc, unsigned len)
 {
     switch(FOURCC(fourcc[0], fourcc[1], fourcc[2], fourcc[3])) {
     case FOURCC('i', 'f', 'i', 'l'):    // version
@@ -725,7 +731,7 @@ bool SoundFont::write (const File filename, FileType format, int quality)
     /** Add a warning that samples were decompressed from a lossy format */
     if (_fileFormatIn == SF2::FileType::SF3Format && _fileFormatOut != _fileFormatIn)
     {
-        _comment << "\n\n" << "CAUTION: Samples in this file were decompressed from a lossy format (Ogg Vorbis). If you want to edit this file, you should get the original uncompressed SF2 file.";
+        _comment += "\n\nCAUTION: Samples in this file were decompressed from a lossy format (Ogg Vorbis). If you want to edit this file, you should get the original uncompressed SF2 file.";
     }
     
     int64 riffLenPos;
@@ -742,14 +748,14 @@ bool SoundFont::write (const File filename, FileType format, int quality)
         _outfile->write("INFO", 4);
 
         writeIfil();
-        if (_name.isNotEmpty())      writeStringSection("INAM", _name);
-        if (_engine.isNotEmpty())    writeStringSection("isng", _engine);
-        if (_product.isNotEmpty())   writeStringSection("IPRD", _product);
-        if (_creator.isNotEmpty())   writeStringSection("IENG", _creator);
-        if (_tools.isNotEmpty())     writeStringSection("ISFT", _tools);
-        if (_date.isNotEmpty())      writeStringSection("ICRD", _date);
-        if (_comment.isNotEmpty())   writeStringSection("ICMT", _comment);
-        if (_copyright.isNotEmpty()) writeStringSection("ICOP", _copyright);
+        if (!_name.empty())      writeStringSection("INAM", _name);
+        if (!_engine.empty())    writeStringSection("isng", _engine);
+        if (!_product.empty())   writeStringSection("IPRD", _product);
+        if (!_creator.empty())   writeStringSection("IENG", _creator);
+        if (!_tools.empty())     writeStringSection("ISFT", _tools);
+        if (!_date.empty())      writeStringSection("ICRD", _date);
+        if (!_comment.empty())   writeStringSection("ICMT", _comment);
+        if (!_copyright.empty()) writeStringSection("ICOP", _copyright);
 
         int64 pos = _outfile->getPosition();
         _outfile->setPosition(listLenPos);
@@ -873,14 +879,16 @@ void SoundFont::write (const char* p, size_t n)
 //   writeString
 //---------------------------------------------------------
 
-void SoundFont::writeString (const String& string, size_t size)
+void SoundFont::writeString (const std::string& string, size_t size)
 {
     char *name = new char[size]();
     // Yes, there are better ways to port this ...
-    if (string.getNumBytesAsUTF8() > 0)
+    size_t len = string.length();
+    if (len > size) len = size;
+    if (len > 0)
         memcpy(name,
-               string.toRawUTF8(),
-               size);
+               string.c_str(),
+               len);
     
     write(name, size);
     delete [] name;
@@ -1736,7 +1744,7 @@ int SoundFont::writeSampleDataFlac (Sample* s, int quality)
     const int numSamples = s->numSamples();
     int rawBytes = numSamples * sizeof(short);
 
-    auto samplerate = s->samplerate;
+    uint samplerate = s->samplerate;
     if (samplerate < 8000)
         samplerate = 8000;
 
@@ -1958,7 +1966,7 @@ void SoundFont::dumpPresets()
     {
         const Preset* p = _presets.getUnchecked(i);
         
-        fprintf(stderr, "%03d %04x-%02x %s\n", idx, p->bank, p->preset, p->name.toRawUTF8());
+        fprintf(stderr, "%03d %04x-%02x %s\n", idx, p->bank, p->preset, p->name.c_str());
         ++idx;
     }
 }

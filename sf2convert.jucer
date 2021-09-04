@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="2.0.1"
+<JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="2.0.2"
               bundleIdentifier="com.cognitone.sf2convert" includeBinaryInAppConfig="0"
               displaySplashScreen="1" jucerFormatVersion="1" cppLanguageStandard="11">
   <MAINGROUP id="MVXugt" name="sf2convert">
@@ -34,6 +34,8 @@
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" winArchitecture="Win32"/>
         <CONFIGURATION isDebug="0" name="Release" winArchitecture="Win32"/>
+        <CONFIGURATION isDebug="1" name="Debug" winArchitecture="x64"/>
+        <CONFIGURATION isDebug="0" name="Release" winArchitecture="x64"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_gui_extra" path="../../juce"/>

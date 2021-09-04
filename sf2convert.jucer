@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="2.0.2"
+<JUCERPROJECT id="eYul1W" name="sf2convert" projectType="consoleapp" version="2.0.3"
               bundleIdentifier="com.cognitone.sf2convert" includeBinaryInAppConfig="0"
               displaySplashScreen="1" jucerFormatVersion="1" cppLanguageStandard="11">
   <MAINGROUP id="MVXugt" name="sf2convert">

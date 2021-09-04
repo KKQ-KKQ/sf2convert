@@ -364,7 +364,7 @@ private:
     void writeShort (short val);
     void write (const char* p, size_t n);
     void writeString (const std::string& string, size_t size);
-    void writeStringSection (const char* fourcc, const String& string);
+    void writeStringSection (const char* fourcc, const std::string& string);
     void writePreset (int zoneIdx, const Preset* preset);
     void writeModulator (const ModulatorList* m);
     void writeGenerator (const GeneratorList* g);

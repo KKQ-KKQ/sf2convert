@@ -898,9 +898,9 @@ void SoundFont::writeString (const std::string& string, size_t size)
 //   writeStringSection
 //---------------------------------------------------------
 
-void SoundFont::writeStringSection (const char* fourcc, const String& string)
+void SoundFont::writeStringSection (const char* fourcc, const std::string& string)
 {
-    const char* s = string.toRawUTF8();
+    const char* s = string.c_str();
     write(fourcc, 4);
     int nn = (int)strlen(s) + 1;
     int n = ((nn + 1) / 2) * 2;

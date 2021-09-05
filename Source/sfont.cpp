@@ -229,10 +229,6 @@ bool SoundFont::read()
         readSignature("sfbk");
         len -= 4;
         while (len) {
-            if (len & 1) {
-                skip(1);
-                len -= 1;
-            }
             unsigned len2 = readFourcc("LIST");
             len -= (len2 + 8);
             char fourcc[5];
@@ -241,10 +237,6 @@ bool SoundFont::read()
             fourcc[4] = 0;
             len2 -= 4;
             while (len2) {
-                if (len2 & 1) {
-                    skip(1);
-                    len2 -= 1;
-                }
                 fourcc[0] = 0;
                 unsigned len3 = readFourcc(fourcc);
                 fourcc[4] = 0;
@@ -287,13 +279,28 @@ void SoundFont::skip (int64 n)
 
 uint SoundFont::readFourcc (char* signature)
 {
-    readSignature(signature);
+    int pad = 0;
+    char fourcc[5];
+    readSignature(fourcc);
+    if (fourcc[0] == 0) { // Padding byte is always 0?
+        fourcc[4] = readChar();
+        pad = 1;
+    }
+    memcpy(signature, fourcc + pad, 4);
     return readDword();
 }
 
 uint SoundFont::readFourcc (const char* signature)
 {
-    readSignature(signature);
+    int pad = 0;
+    char fourcc[5];
+    readSignature(fourcc);
+    if (fourcc[0] == 0) { // Padding byte is always 0?
+        fourcc[4] = readChar();
+        pad = 1;
+    }
+    if (memcmp(fourcc + pad, signature, 4) != 0)
+        throw(String("fourcc " + String(signature) + " expected"));
     return readDword();
 }
 

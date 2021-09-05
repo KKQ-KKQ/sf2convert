@@ -329,8 +329,8 @@ private:
     int readShort();
     int readByte();
     int readChar();
-    unsigned readFourcc (const char* signature);
-    unsigned readFourcc (char* signature);
+    unsigned readFourcc (const char* signature, bool &padded);
+    unsigned readFourcc (char* signature, bool &padded);
     void readSignature (const char* signature);
     void readSignature (char* signature);
     void skip (int64 n);

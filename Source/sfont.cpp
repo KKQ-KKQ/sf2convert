@@ -225,11 +225,16 @@ bool SoundFont::read()
         return false;
     }
     try {
-        unsigned len = readFourcc("RIFF");
+        bool padded = false;
+        unsigned len = readFourcc("RIFF", padded);
         readSignature("sfbk");
         len -= 4;
         while (len) {
-            unsigned len2 = readFourcc("LIST");
+            padded = true;
+            unsigned len2 = readFourcc("LIST", padded);
+            if (padded) {
+                len -= 1;
+            }
             len -= (len2 + 8);
             char fourcc[5];
             fourcc[0] = 0;
@@ -238,7 +243,11 @@ bool SoundFont::read()
             len2 -= 4;
             while (len2) {
                 fourcc[0] = 0;
-                unsigned len3 = readFourcc(fourcc);
+                padded = true;
+                unsigned len3 = readFourcc(fourcc, padded);
+                if (padded) {
+                    len2 -= 1;
+                }
                 fourcc[4] = 0;
                 len2 -= (len3 + 8);
                 readSection(fourcc, len3);
@@ -277,27 +286,33 @@ void SoundFont::skip (int64 n)
 //   readFourcc
 //---------------------------------------------------------
 
-uint SoundFont::readFourcc (char* signature)
+uint SoundFont::readFourcc (char* signature, bool &padded)
 {
     int pad = 0;
     char fourcc[5];
     readSignature(fourcc);
-    if (fourcc[0] == 0) { // Padding byte is always 0?
+    if (fourcc[0] == 0 && padded) { // Padding byte is always 0?
         fourcc[4] = readChar();
         pad = 1;
+    }
+    else {
+        padded = false;
     }
     memcpy(signature, fourcc + pad, 4);
     return readDword();
 }
 
-uint SoundFont::readFourcc (const char* signature)
+uint SoundFont::readFourcc (const char* signature, bool &padded)
 {
     int pad = 0;
     char fourcc[5];
     readSignature(fourcc);
-    if (fourcc[0] == 0) { // Padding byte is always 0?
+    if (fourcc[0] == 0 && padded) { // Padding byte is always 0?
         fourcc[4] = readChar();
         pad = 1;
+    }
+    else {
+        padded = false;
     }
     if (memcmp(fourcc + pad, signature, 4) != 0)
         throw(String("fourcc " + String(signature) + " expected"));

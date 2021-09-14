@@ -229,7 +229,7 @@ bool SoundFont::read()
         unsigned len = readFourcc("RIFF", padded);
         readSignature("sfbk");
         len -= 4;
-        while (len) {
+        while (len >= 4) {
             padded = true;
             unsigned len2 = readFourcc("LIST", padded);
             if (padded) {
@@ -241,7 +241,7 @@ bool SoundFont::read()
             readSignature(fourcc);
             fourcc[4] = 0;
             len2 -= 4;
-            while (len2) {
+            while (len2 >= 4) {
                 fourcc[0] = 0;
                 padded = true;
                 unsigned len3 = readFourcc(fourcc, padded);
